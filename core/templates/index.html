@@ -1,0 +1,11 @@
+{% extends 'model-page.html' %}
+
+{% block content %}
+    <h2>Donwload</h2>
+    <form action="submit_preview" method="post">{% csrf_token %}
+        <p>Cole a url do video abaixo</p>
+        <input type="text" name="url_video" size="45" placeholder="https://www.youtube.com/watch?v=..." required>
+        <button type="submit">Processar</button>
+    </form>
+    <br>
+{% endblock %}

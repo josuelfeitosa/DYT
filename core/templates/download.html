@@ -1,0 +1,132 @@
+{% extends 'model-page.html' %}
+
+{% block content %}
+    <style>
+        table, th, td {
+        border:1px solid black;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Função para baixar o arquivo
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById("baixarArquivo").addEventListener('click', async function() {
+                const videoUrl = $("#id_url_video").val(); // Pega a URL do vídeo
+                const bitrate = $("#bitrate").val(); // Pega a qualidade selecionada
+                const idUrlVideo = $("input[name='id_url_video']").val(); // Pega o id_url_video
+                const title = document.getElementById("id_titulo").innerText; // Pega o título do vídeo
+
+                try {
+                    // 1. Mostra o diálogo para selecionar/local de salvamento
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: title,
+                        types: [{
+                            description: 'Áudios MP3',
+                            accept: {'audio/mp3': ['.mp3']}
+                        }]
+                    });
+                    // 2. Verifica se o usuário cancelou o diálogo
+                    if (!handle) {
+                        alert('Download cancelado pelo usuário.');
+                        return;
+                    }                    
+                    // 2. Cria um stream para escrever o arquivo
+                    const writableStream = await handle.createWritable();
+                    // 3. Chama sua função de download no Django via fetch
+                    const response = await fetch('submit_download', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            video_url: videoUrl,
+                            save_path: handle.name,
+                            bitrate: bitrate,
+                            title: title,
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Erro no download');
+                    
+                    // 4. Escreve o conteúdo no arquivo local
+                    const blob = await response.blob();
+                    await writableStream.write(blob);
+                    await writableStream.close();
+                    
+                    alert('Download concluído com sucesso!');
+                } catch (error) {
+                    console.error('Erro:', error);
+                    if (error.name !== 'AbortError') {
+                        alert('Erro ao baixar: ' + error.message);
+                    }
+                }
+            });
+
+            $(document).ready(function() {
+                $("#voltar").click(function() {
+                    window.history.back();
+                });
+            });
+
+        });
+        // Função para pegar o token CSRF
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+    
+    <h2>Donwload</h2>
+        <div align="center">
+        <table style="width:50%">
+            <tr>
+                <th>Título</th>
+                <th>Artista</th>
+                <th>Duração</th>
+            </tr>
+            {% for video in videos %}
+                <tr align="center">
+                    <td id="id_titulo">{{ video.titulo }}</td>
+                    <td>{{ video.artista }}</td>
+                    <td>{{ video.duracao }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+        </div>
+        <br><br>
+        <div align="center">
+        <label for="quality">Qualidade:</label>
+        <!--<select name="quality" id="quality" hidden>
+            <option value="144p">144p</option>
+            <option value="240p">240p</option>
+            <option value="360p">360p</option>
+            <option value="480p">480p</option>
+            <option value="720p">720p</option>
+            <option value="1080p">1080p</option>
+        </select>-->
+        <select name="bitrate" id="bitrate">
+            <option value="128">128 kpbs</option>
+            <option value="192">192 kpbs</option>
+            <option value="256">256 kpbs</option>
+            <option value="320">320 kpbs</option>
+          </select>
+        <br><br>
+        <button type="button" id="baixarArquivo" data-video-url="{{ video.url }}">Download</button>
+        <button type="button" id="voltar">Voltar</button>
+        {% for video in videos %}
+            <input type="text" id="id_url_video" name="id_url_video" value="{{ video.url }}" hidden>
+        {% endfor %}
+    </div>
+    <br>
+{% endblock %}
